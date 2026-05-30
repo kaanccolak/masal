@@ -5,6 +5,7 @@ import {
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import * as Device from 'expo-device';
 
 const COLORS = {
   bg: '#0A0E1A',
@@ -35,15 +36,62 @@ export default function AuthScreen() {
 
     setIsLoading(true);
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      } else {
+      if (!isLogin) {
+        const deviceId = Device.modelId || Device.osInternalBuildId || 'unknown';
+
+        const { data: existingDevice } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('device_id', deviceId)
+          .maybeSingle();
+
+        if (existingDevice) {
+          Alert.alert(
+            'Hesap Mevcut',
+            'Bu cihazdan zaten bir hesap oluşturulmuş. Lütfen mevcut hesabınızla giriş yapın.',
+            [{ text: 'Tamam', onPress: () => setIsLogin(true) }]
+          );
+          setIsLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+
+        if (newUser) {
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({ 
+              id: newUser.id, 
+              email: newUser.email,
+              device_id: deviceId 
+            });
+
+          if (upsertError && upsertError.code === '23505') {
+            await supabase.auth.admin.deleteUser(newUser.id);
+            await supabase.auth.signOut();
+            Alert.alert(
+              'Hesap Mevcut',
+              'Bu cihazdan zaten bir hesap oluşturulmuş. Lütfen mevcut hesabınızla giriş yapın.',
+              [{ text: 'Tamam', onPress: () => setIsLogin(true) }]
+            );
+            setIsLoading(false);
+            return;
+          }
+        }
+
         Alert.alert('Başarılı!', 'Hesabın oluşturuldu. Giriş yapabilirsin.');
         setIsLogin(true);
+        setIsLoading(false);
+        return;
       }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
     } catch (error) {
       Alert.alert('Hata', error.message);
     } finally {

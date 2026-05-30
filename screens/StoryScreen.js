@@ -21,44 +21,30 @@ const COLORS = {
 export default function StoryScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { story, selectedVoice, storyId } = route.params;
+  const { story, storyId } = route.params;
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentStoryId, setCurrentStoryId] = useState(storyId);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [sound, setSound] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState(route.params.selectedVoice || 'female');
+  const [fontSize, setFontSize] = useState(16);
 
-  // TTS state'leri
-  const [isPlaying,        setIsPlaying]        = useState(false);
-  const [isLoadingAudio,   setIsLoadingAudio]   = useState(false);
-  const [sound,            setSound]            = useState(null);
-  const [localAudioPaths,  setLocalAudioPaths]  = useState({ female: null, male: null });
+  const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
   const VOICES = {
-    female: 'EXAVITQu4vr4xnSDxMaL',
-    male:   'pNInz6obpgDQGcFmaJgB',
+    female: 'Kore',
+    male: 'Fenrir',
   };
 
-  const ELEVENLABS_API_KEY = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY;
-
-  const lines = story.split('\n').filter(line => line.trim() !== '');
-  const title = lines[0];
-  const content = lines.slice(1).join('\n\n');
+  const storyParts = story.trim().split(/\n+/);
+  const title = storyParts[0] || '';
+  const content = storyParts.slice(1).filter(p => p.trim() !== '').join('\n\n');
 
   const handleShare = async () => {
     await Share.share({ message: story });
   };
 
-  const handleFavorite = async () => {
-    const newFavorite = !isFavorite;
-    setIsFavorite(newFavorite);
-
-    if (currentStoryId) {
-      await supabase
-        .from('stories')
-        .update({ is_favorite: newFavorite })
-        .eq('id', currentStoryId);
-    }
-  };
-
-  // Ses kaynağını temizle
   useEffect(() => {
     return () => {
       if (sound) {
@@ -67,7 +53,6 @@ export default function StoryScreen() {
     };
   }, [sound]);
 
-  // Oynat / Duraklat
   const handlePlayPause = async () => {
     if (isPlaying && sound) {
       await sound.pauseAsync();
@@ -88,9 +73,10 @@ export default function StoryScreen() {
         staysActiveInBackground: false,
       });
 
-      // Önce yerel dosyaya bak
-      const localPath = `${FileSystem.documentDirectory}${currentStoryId}_${selectedVoice}.mp3`;
+      const storyText = route.params.storyRaw || story;
+      const localPath = `${FileSystem.documentDirectory}${currentStoryId}_${selectedVoice}.wav`;
       const fileInfo = await FileSystem.getInfoAsync(localPath);
+
       if (fileInfo.exists) {
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: localPath },
@@ -106,48 +92,77 @@ export default function StoryScreen() {
       }
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${VOICES[selectedVoice]}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
-          headers: {
-            'xi-api-key': ELEVENLABS_API_KEY,
-            'Content-Type': 'application/json',
-            'Accept': 'audio/mpeg',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            text: story,
-            model_id: 'eleven_multilingual_v2',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.3,
-              use_speaker_boost: true,
-            },
+            contents: [{ parts: [{ text: storyText }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: VOICES[selectedVoice] }
+                }
+              }
+            }
           }),
         }
       );
 
-      if (!response.ok) throw new Error('API hatası: ' + response.status);
+      const data = await response.json();
 
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce(
-          (data, byte) => data + String.fromCharCode(byte), ''
-        )
-      );
-      const uri = `data:audio/mpeg;base64,${base64}`;
-
-      // Yerel dosyaya kaydet
-      try {
-        await FileSystem.writeAsStringAsync(localPath, base64, {
-          encoding: 'base64',
-        });
-      } catch (e) {
-        console.log('Yerel kayıt hatası:', e);
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
+        throw new Error('Ses verisi gelmedi: ' + JSON.stringify(data).substring(0, 100));
       }
 
+      const base64Audio = data.candidates[0].content.parts[0].inlineData.data;
+
+      const binaryStr = atob(base64Audio);
+      const pcmBytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        pcmBytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      const sampleRate = 24000;
+      const numChannels = 1;
+      const bitsPerSample = 16;
+      const dataSize = pcmBytes.length;
+      const wavBuffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(wavBuffer);
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+
+      ws(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      ws(8, 'WAVE');
+      ws(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+      view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+      view.setUint16(34, bitsPerSample, true);
+      ws(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const wavBytes = new Uint8Array(wavBuffer);
+      wavBytes.set(pcmBytes, 44);
+
+      let wavBase64 = '';
+      const chunkSize = 4096;
+      for (let i = 0; i < wavBytes.length; i += chunkSize) {
+        const chunk = wavBytes.subarray(i, Math.min(i + chunkSize, wavBytes.length));
+        wavBase64 += String.fromCharCode(...chunk);
+      }
+      wavBase64 = btoa(wavBase64);
+
+      await FileSystem.writeAsStringAsync(localPath, wavBase64, {
+        encoding: 'base64',
+      });
+
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
+        { uri: localPath },
         { shouldPlay: true }
       );
 
@@ -155,9 +170,7 @@ export default function StoryScreen() {
       setIsPlaying(true);
 
       newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
-          setIsPlaying(false);
-        }
+        if (status.didJustFinish) setIsPlaying(false);
       });
 
     } catch (error) {
@@ -166,6 +179,21 @@ export default function StoryScreen() {
       setIsLoadingAudio(false);
     }
   };
+
+  const handleFavorite = async () => {
+    const newFavorite = !isFavorite;
+    setIsFavorite(newFavorite);
+
+    if (currentStoryId) {
+      await supabase
+        .from('stories')
+        .update({ is_favorite: newFavorite })
+        .eq('id', currentStoryId);
+    }
+  };
+
+
+  console.log('STORY:', JSON.stringify(story?.substring(0, 300)));
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -190,30 +218,26 @@ export default function StoryScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Başlık */}
         <Text style={{
-          color: COLORS.white,
-          fontSize: 24,
+          color: '#FFFFFF',
+          fontSize: 22,
           fontWeight: 'bold',
-          marginBottom: 20,
-          lineHeight: 32,
-        }}>{title}</Text>
+          marginBottom: 12,
+          lineHeight: 30,
+        }}>
+          {title}
+        </Text>
 
         {/* Oynat/Durdur butonu */}
         <TouchableOpacity
           onPress={handlePlayPause}
           disabled={isLoadingAudio}
           style={{
-            backgroundColor: '#7C6AF7',
-            borderRadius: 14,
-            padding: 16,
-            alignItems: 'center',
-            marginBottom: 24,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
-            opacity: isLoadingAudio ? 0.7 : 1,
+            backgroundColor: '#7C6AF7', borderRadius: 14, padding: 16,
+            alignItems: 'center', marginBottom: 24, flexDirection: 'row',
+            justifyContent: 'center', gap: 8, opacity: isLoadingAudio ? 0.7 : 1,
           }}>
           <Text style={{ fontSize: 20 }}>
             {isLoadingAudio ? '⏳' : isPlaying ? '⏸' : '▶️'}
@@ -223,13 +247,59 @@ export default function StoryScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Masal metni */}
-        <Text style={{
-          color: '#D1D5DB',
-          fontSize: 17,
-          lineHeight: 30,
-          letterSpacing: 0.3,
-        }}>{content}</Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#111827',
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: '#1E2433',
+          padding: 4,
+          marginBottom: 16,
+        }}>
+          <TouchableOpacity
+            onPress={() => setFontSize(prev => Math.max(12, prev - 2))}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              paddingVertical: 8,
+              borderRadius: 8,
+            }}>
+            <Text style={{ color: '#8892A4', fontSize: 15, fontWeight: 'bold' }}>A-</Text>
+          </TouchableOpacity>
+
+          <View style={{ flex: 2, alignItems: 'center' }}>
+            <Text style={{ color: '#8892A4', fontSize: 12 }}>Yazı Boyutu</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setFontSize(prev => Math.min(24, prev + 2))}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              paddingVertical: 8,
+              borderRadius: 8,
+            }}>
+            <Text style={{ color: '#8892A4', fontSize: 19, fontWeight: 'bold' }}>A+</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Ayraç */}
+        <View style={{ height: 1, backgroundColor: '#1E2433', marginBottom: 16 }} />
+
+        {/* İçerik - her paragraf ayrı render */}
+        {content.split('\n\n').map((paragraph, index) => (
+          <Text key={index} style={{
+            color: '#D1D5DB',
+            fontSize: fontSize,
+            lineHeight: 28,
+            letterSpacing: 0.2,
+            marginBottom: 12,
+          }}>
+            {paragraph.trim()}
+          </Text>
+        ))}
       </ScrollView>
 
       {/* Alt butonlar */}
@@ -243,40 +313,45 @@ export default function StoryScreen() {
         borderTopColor: COLORS.cardBorder,
         padding: 16,
         paddingBottom: 32,
-        flexDirection: 'row',
-        gap: 12,
+        gap: 10,
       }}>
-        {/* Favori butonu */}
-        <TouchableOpacity
-          onPress={handleFavorite}
-          style={{
-            flex: 1,
-            backgroundColor: isFavorite ? '#F5A623' : COLORS.card,
-            borderWidth: 1,
-            borderColor: isFavorite ? '#F5A623' : COLORS.cardBorder,
-            borderRadius: 14,
-            padding: 14,
-            alignItems: 'center',
-          }}>
-          <Text style={{ color: COLORS.white, fontSize: 14, fontWeight: 'bold' }}>
-            {isFavorite ? '★ Favoride' : '☆ Favoriye Ekle'}
-          </Text>
-        </TouchableOpacity>
+        {/* Favori + Yeni Masal */}
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            onPress={handleFavorite}
+            style={{
+              flex: 1,
+              backgroundColor: isFavorite ? '#F5A623' : COLORS.card,
+              borderWidth: 1,
+              borderColor: isFavorite ? '#F5A623' : COLORS.cardBorder,
+              borderRadius: 14,
+              padding: 12,
+              alignItems: 'center',
+            }}>
+            <Text style={{ color: COLORS.white, fontSize: 13, fontWeight: 'bold' }}>
+              {isFavorite ? '★ Favoride' : '☆ Favoriye Ekle'}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Yeni masal butonu */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{
-            flex: 1,
-            backgroundColor: COLORS.accent,
-            borderRadius: 14,
-            padding: 14,
-            alignItems: 'center',
-          }}>
-          <Text style={{ color: COLORS.white, fontSize: 14, fontWeight: 'bold' }}>
-            ✨ Yeni Masal
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (sound) {
+                sound.unloadAsync();
+              }
+              navigation.goBack();
+            }}
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.accent,
+              borderRadius: 14,
+              padding: 12,
+              alignItems: 'center',
+            }}>
+            <Text style={{ color: COLORS.white, fontSize: 13, fontWeight: 'bold' }}>
+              ✨ Yeni Masal
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );

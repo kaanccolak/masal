@@ -42,8 +42,22 @@ export default function FavoritesScreen() {
   };
 
   const handleStoryPress = (story) => {
+    const cleanContent = story.content
+      .replace(/\[short pause\]/gi, '')
+      .replace(/\[medium pause\]/gi, '')
+      .replace(/\[long pause\]/gi, '')
+      .replace(/\[whispering\]/gi, '')
+      .replace(/\[shouting\]/gi, '')
+      .replace(/\[laughing\]/gi, '')
+      .replace(/\[sigh\]/gi, '')
+      .replace(/\[uhm\]/gi, '')
+      .replace(/\[extremely fast\]/gi, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+
     navigation.navigate('Story', {
-      story: story.content,
+      story: cleanContent,
+      storyRaw: story.content,
       selectedVoice: story.voice || 'female',
       storyId: story.id,
     });

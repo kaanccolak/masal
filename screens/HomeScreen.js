@@ -19,6 +19,7 @@ import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { supabase } from '../lib/supabase';
+import * as Device from 'expo-device';
 
 // API anahtarı: önce app.json extra'ya, yoksa .env'e düşer
 const ANTHROPIC_API_KEY =
@@ -61,13 +62,13 @@ const CATEGORIES = [
     id: 'hayvanlar',
     label: 'Hayvanlar',
     emoji: '🐾',
-    subs: ['Kedi','Köpek','Kurt','Ayı','Baykuş','Fil','Penguen','Tavşan','Aslan','Tilki','Kaplumbağa'],
+    subs: ['Kedi','Köpek','Kurt','Ayı','Baykuş','Fil','Penguen','Tavşan','Aslan','Tilki','Kaplumbağa','Kuş','Kirpi','Yunus','Balina','Timsah','Koala','Panda','Sincap','Balık'],
   },
   {
     id: 'macera',
     label: 'Macera',
     emoji: '🚀',
-    subs: ['Kayıp hazine','Büyük yolculuk','Gizli kapı','Dağ tırmanışı','Deniz altı'],
+    subs: ['Kayıp hazine','Büyük yolculuk','Gizli kapı','Dağ tırmanışı','Deniz altı','Zaman yolculuğu','Kayıp şehir','Uzay yolculuğu'],
   },
   {
     id: 'duygusal',
@@ -91,13 +92,31 @@ const CATEGORIES = [
     id: 'sihir',
     label: 'Sihir',
     emoji: '✨',
-    subs: ['Büyücü','Peri','Ejderha','Sihirli orman','Büyülü nesne','Gizli dünya'],
+    subs: ['Büyücü','Peri','Ejderha','Sihirli orman','Büyülü nesne','Gizli dünya','Unicorn','Deniz kızı','Dev','Cadı','Dinozor'],
   },
   {
     id: 'egitici',
     label: 'Eğitici',
     emoji: '🧠',
     subs: ['Sayılar','Renkler','Hayvanlar','Bitkiler','Meslekler','Duygular'],
+  },
+  {
+    id: 'aile',
+    label: 'Aile',
+    emoji: '👨‍👩‍👧',
+    subs: ['Anne','Baba','Abi','Abla','Kardeş','Büyükanne','Büyükbaba','Teyze','Amca','Hala','Dayı'],
+  },
+  {
+    id: 'sanat',
+    label: 'Sanat & Müzik',
+    emoji: '🎨',
+    subs: ['Ressam','Müzisyen','Dansçı','Şarkıcı','Heykeltraş'],
+  },
+  {
+    id: 'kahraman',
+    label: 'Süper Kahraman',
+    emoji: '🦸',
+    subs: ['Demir Kahraman','Yıldız Savaşçı','Örümcek Kahraman','Yeşil Dev','Yarasa Kahraman','Çelik Adam','Şimşek Adam','Buz Prensesi','Su Prensi'],
   },
 ];
 
@@ -132,6 +151,10 @@ export default function HomeScreen() {
   // Ses seçimi
   const [selectedVoice, setSelectedVoice] = useState('female');
 
+  // Freemium
+  const [monthlyCount, setMonthlyCount] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
+
   // Animasyon değerleri
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim  = useRef(new Animated.Value(1)).current;
@@ -140,6 +163,24 @@ export default function HomeScreen() {
   const dot1Opacity = useRef(new Animated.Value(0.3)).current;
   const dot2Opacity = useRef(new Animated.Value(0.3)).current;
   const dot3Opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('monthly_count, is_premium')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        setMonthlyCount(profile.monthly_count || 0);
+        setIsPremium(profile.is_premium || false);
+      }
+    };
+    loadProfile();
+  }, []);
 
   useEffect(() => {
     if (isLoading) {
@@ -239,23 +280,26 @@ export default function HomeScreen() {
   // Örnek ses dinleme
   const playVoiceSample = async (voice) => {
     try {
-      const sampleFile = voice === 'female'
-        ? require('../assets/sarah.mp3')
-        : require('../assets/adam.mp3');
-
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
 
-      const { sound } = await Audio.Sound.createAsync(sampleFile, { shouldPlay: true });
+      const sampleFile = voice === 'female'
+        ? require('../assets/kore.wav')
+        : require('../assets/fenrir.wav');
+
+      const { sound } = await Audio.Sound.createAsync(
+        sampleFile,
+        { shouldPlay: true }
+      );
+
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
-          sound.unloadAsync();
-        }
+        if (status.didJustFinish) sound.unloadAsync();
       });
+
     } catch (error) {
-      Alert.alert('Hata', 'Ses çalınamadı.');
+      Alert.alert('Hata', 'Ses önizlemesi yüklenemedi: ' + error.message);
     }
   };
 
@@ -285,6 +329,50 @@ export default function HomeScreen() {
     if (!selectedAge || selectedSubItems.length === 0) return;
 
     setIsLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('monthly_count, is_premium, subscription_start_date')
+      .eq('id', user.id)
+      .single();
+
+    const now = new Date();
+    const startDate = new Date(profile?.subscription_start_date || now);
+    const daysSinceStart = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+    const periodsPassed = Math.floor(daysSinceStart / 30);
+    const currentPeriodStart = new Date(startDate);
+    currentPeriodStart.setDate(currentPeriodStart.getDate() + (periodsPassed * 30));
+
+    const shouldReset = daysSinceStart > 0 && daysSinceStart % 30 === 0;
+
+    if (shouldReset) {
+      await supabase
+        .from('profiles')
+        .update({ 
+          monthly_count: 0,
+          subscription_start_date: now.toISOString()
+        })
+        .eq('id', user.id);
+      profile.monthly_count = 0;
+    }
+
+    if (!profile?.is_premium && (profile?.monthly_count || 0) >= 10) {
+      Alert.alert(
+        'Bu ayki masalların bitti 🌙',
+        'Bu ay 10 ücretsiz masalını kullandın. Sınırsız masal için premium üyeliğe geç.',
+        [
+          { text: 'Belki sonra', style: 'cancel' },
+          { 
+            text: '✨ Premium Al', 
+            onPress: () => Alert.alert('Yakında!', 'Premium üyelik çok yakında geliyor.') 
+          },
+        ]
+      );
+      setIsLoading(false);
+      return;
+    }
 
     // Sadece alt seçenek adlarını al ("hayvanlar:Kedi" → "Kedi")
     const themes = selectedSubItems.map(item => item.split(':')[1]).join(', ');
@@ -324,17 +412,41 @@ Kurallar:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
-          max_tokens: 1024,
-          system: `Sen deneyimli bir Türk çocuk edebiyatı yazarısın. Her zaman şu kurallara uy:
+          max_tokens: 2048,
+          system: `Sen deneyimli bir Türk çocuk edebiyatı yazarısın.
+Görevin akıcı, sıcak ve sürükleyici bir uyku masalı yazmak.
+
+ÖNEMLI: Masalın büyük çoğunluğu normal, sıcak bir sesle okunmalıdır.
+Etiketler çok nadir kullanılmalıdır.
+
+İzin verilen etiketler — tüm masalda TOPLAM en fazla 3 etiket:
+
+[sigh] → Karakter derin bir nefes verdiğinde. Tüm masalda en fazla 1 kez.
+[laughing] → Gerçekten komik bir anda. Tüm masalda en fazla 1 kez.
+[whispering] → SADECE tek bir cümle için, gerçek bir sır anında. Tüm masalda en fazla 1 kez. Bir cümleden uzun ASLA kullanma.
+[short pause] → Dramatik bir an öncesinde. Tüm masalda en fazla 2 kez.
+
+YASAK:
+- [shouting] kullanma
+- [uhm] kullanma  
+- Art arda 2 etiket kullanma
+- Anlatıcı sesini [whispering] yapma — SADECE karakter diyalogunda 1 cümle
+- [whispering] ile başlayan paragraf yazma
+
+ÖRNEK DOĞRU KULLANIM:
+"Orman sessizdi. Minik sincap kulağını dayadı. [whispering] 'Bunu kimseye söyleme,' dedi."
+
+ÖRNEK YANLIŞ KULLANIM:
+"[whispering] Orman sessizdi. Minik sincap yavaşça yürüdü. Ağaçlar ona baktı..."
+
+GENEL KURALLAR:
+- Normal anlatıcı sesi sıcak, sakin ve akıcı olsun
+- Basit akıcı Türkçe, yaşa uygun
 - Değeri ASLA doğrudan söyleme, karakterin eylemiyle göster
-- "Göster, söyleme" kuralına kesinlikle uy
-- Mantıksal tutarlılık şart, her sonucun nedeni olmalı
-- Hikaye uykuya doğal bir geçişle bitsin
-- Son cümle çocuğa iyi geceler hissi versin
-- Emoji, açıklama, yorum, meta not kesinlikle ekleme
-- Sadece hikaye yaz, başka hiçbir şey
-- Markdown formatı kullanma, # işareti koyma
-- Başlığı düz metin olarak yaz`,
+- Markdown formatı kullanma
+- Emoji veya açıklama ekleme, sadece hikaye
+- Hikaye uykuya doğal geçişle bitsin
+- Son cümle çocuğa iyi geceler hissi versin`,
           messages: [{ 
             role: 'user', 
             content: prompt 
@@ -349,13 +461,30 @@ Kurallar:
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .trim();
 
+      const storyForDisplay = cleanStory
+        .replace(/\[short pause\]/gi, '')
+        .replace(/\[medium pause\]/gi, '')
+        .replace(/\[long pause\]/gi, '')
+        .replace(/\[whispering\]/gi, '')
+        .replace(/\[shouting\]/gi, '')
+        .replace(/\[laughing\]/gi, '')
+        .replace(/\[sigh\]/gi, '')
+        .replace(/\[uhm\]/gi, '')
+        .replace(/\[extremely fast\]/gi, '')
+        .replace(/\[scared\]/gi, '')
+        .replace(/\[curious\]/gi, '')
+        .replace(/\[bored\]/gi, '')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
+
       // Masal ekranına geç
       // Masalı Supabase'e kaydet
       const { data: { user } } = await supabase.auth.getUser();
       let storyId = null;
+      let insertedStory = null;
       if (user) {
         const titleLine = cleanStory.split('\n')[0];
-        const { data: insertedStory } = await supabase
+        const { data: insertedStory_, error: insertError } = await supabase
           .from('stories')
           .insert({
             user_id: user.id,
@@ -368,12 +497,25 @@ Kurallar:
           })
           .select()
           .single();
+        insertedStory = insertedStory_;
         storyId = insertedStory?.id;
       }
 
-      navigation.navigate('Story', { story: cleanStory, selectedVoice, storyId });
+      navigation.navigate('Story', { 
+        story: storyForDisplay,
+        storyRaw: cleanStory,
+        selectedVoice,
+        storyId: insertedStory?.id 
+      });
+
+      await supabase
+        .from('profiles')
+        .update({ monthly_count: (profile?.monthly_count || 0) + 1 })
+        .eq('id', user.id);
+
     } catch (error) {
-      Alert.alert('Hata', 'Masal oluşturulamadı. Lütfen tekrar dene.');
+      console.log('Masal hatası:', error.message, error);
+      Alert.alert('Hata', 'Masal oluşturulamadı: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -481,6 +623,35 @@ Kurallar:
           <Text style={s.favLabel}>Favori Masallarım</Text>
           <Text style={s.favArrow}>›</Text>
         </TouchableOpacity>
+
+        {!isPremium && monthlyCount >= 7 && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: monthlyCount >= 9 ? '#2D1B4E' : '#1A1A2E',
+            borderRadius: 12,
+            padding: 10,
+            marginHorizontal: 16,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: monthlyCount >= 9 ? '#7C6AF7' : '#F5A623',
+            gap: 6,
+          }}>
+            <Text style={{ fontSize: 16 }}>
+              {monthlyCount >= 9 ? '⭐' : '🌙'}
+            </Text>
+            <Text style={{ 
+              color: monthlyCount >= 9 ? '#7C6AF7' : '#F5A623', 
+              fontSize: 13,
+              fontWeight: monthlyCount >= 9 ? 'bold' : 'normal',
+            }}>
+              {monthlyCount === 9 
+                ? 'Son masalın! Sınırsız için premium\'a geç' 
+                : `Bu ay ${10 - monthlyCount} masal hakkın kaldı`}
+            </Text>
+          </View>
+        )}
 
         {/* ══ 3. MASAL OLUŞTURMA KARTI ════════════════════════════════════ */}
         <View style={s.card}>
@@ -671,7 +842,7 @@ Kurallar:
               }}>
               <Text style={{ fontSize: 24, marginBottom: 4 }}>👩</Text>
               <Text style={{ color: selectedVoice === 'female' ? '#FFFFFF' : '#8892A4', fontSize: 13, fontWeight: 'bold' }}>Kadın sesi</Text>
-              <Text style={{ color: '#8892A4', fontSize: 11, marginTop: 2 }}>Sarah</Text>
+              <Text style={{ color: '#8892A4', fontSize: 11, marginTop: 2 }}>Eda</Text>
               <TouchableOpacity
                 onPress={() => playVoiceSample('female')}
                 style={{ marginTop: 6 }}>
@@ -692,7 +863,7 @@ Kurallar:
               }}>
               <Text style={{ fontSize: 24, marginBottom: 4 }}>👨</Text>
               <Text style={{ color: selectedVoice === 'male' ? '#FFFFFF' : '#8892A4', fontSize: 13, fontWeight: 'bold' }}>Erkek sesi</Text>
-              <Text style={{ color: '#8892A4', fontSize: 11, marginTop: 2 }}>Adam</Text>
+              <Text style={{ color: '#8892A4', fontSize: 11, marginTop: 2 }}>Kaan</Text>
               <TouchableOpacity
                 onPress={() => playVoiceSample('male')}
                 style={{ marginTop: 6 }}>
