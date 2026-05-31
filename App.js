@@ -8,11 +8,16 @@ import AuthScreen from './screens/AuthScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SplashScreen from './screens/SplashScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import PremiumScreen from './screens/PremiumScreen';
+import ExtraStoriesScreen from './screens/ExtraStoriesScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createStackNavigator();
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,8 +32,24 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      setShowOnboarding(true);
+    };
+    checkOnboarding();
+  }, []);
+
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  if (showOnboarding) {
+    return (
+      <OnboardingScreen onFinish={async () => {
+        await AsyncStorage.setItem('onboarding_done', 'true');
+        setShowOnboarding(false);
+      }} />
+    );
   }
 
   if (isLoading) return null;
@@ -42,6 +63,8 @@ export default function App() {
             <Stack.Screen name="Story" component={StoryScreen} />
             <Stack.Screen name="Favorites" component={FavoritesScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Premium" component={PremiumScreen} />
+            <Stack.Screen name="ExtraStories" component={ExtraStoriesScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />

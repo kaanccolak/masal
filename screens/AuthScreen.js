@@ -94,7 +94,23 @@ export default function AuthScreen() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     } catch (error) {
-      Alert.alert('Hata', error.message);
+      let errorMessage = 'Bir hata oluştu. Lütfen tekrar dene.';
+
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'E-posta veya şifre hatalı. Lütfen tekrar dene.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'E-posta adresin doğrulanmamış. Lütfen e-postanı kontrol et.';
+      } else if (error.message.includes('User already registered')) {
+        errorMessage = 'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yap.';
+      } else if (error.message.includes('Password should be at least')) {
+        errorMessage = 'Şifre en az 6 karakter olmalıdır.';
+      } else if (error.message.includes('Unable to validate email address')) {
+        errorMessage = 'Geçerli bir e-posta adresi girin.';
+      } else if (error.message.includes('network')) {
+        errorMessage = 'İnternet bağlantını kontrol et.';
+      }
+
+      Alert.alert('Hata', errorMessage);
     } finally {
       setIsLoading(false);
     }

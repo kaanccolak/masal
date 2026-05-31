@@ -148,9 +148,11 @@ export default function ProfileScreen() {
     );
   }
 
-  const remainingStories = Math.max(0, 5 - (profile?.monthly_count || 0));
+  const limit = profile?.is_premium ? 30 : 5;
+  const extraStories = profile?.extra_stories || 0;
+  const remainingMonthly = Math.max(0, limit - (profile?.monthly_count || 0));
   const memberSince = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })
+    ? new Date(profile.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })
     : '-';
 
   return (
@@ -198,9 +200,16 @@ export default function ProfileScreen() {
 
         {/* Hesap Bilgileri */}
         <Section title="Hesap Bilgileri">
-          <Row label="E-posta" value={email} isLast={false} />
-          <Row label="Üyelik tarihi" value={memberSince} isLast={false} />
-          <Row label="Bu ay kalan hak" value={`${remainingStories} masal`} isLast={true} />
+          <Row label="E-Posta Adresi" value={email} isLast={false} />
+          <Row label="Üyelik Tarihi" value={memberSince} isLast={false} />
+          <Row label="Bu Ayki Ücretsiz Masal Hakkı" value={`${remainingMonthly} masal`} isLast={extraStories === 0} />
+          {extraStories > 0 && (
+            <Row 
+              label="Satın Alınan Masal Hakkı" 
+              value={`${extraStories} masal`} 
+              isLast={true} 
+            />
+          )}
         </Section>
 
         {/* Plan */}
@@ -208,7 +217,7 @@ export default function ProfileScreen() {
           <Section title="Üyelik">
             <Row
               label="✨ Premium'a Geç"
-              onPress={() => Alert.alert('Yakında!', 'Premium üyelik çok yakında geliyor.')}
+              onPress={() => navigation.navigate('Premium')}
               color={COLORS.accent}
               isLast={true}
             />

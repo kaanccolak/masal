@@ -339,7 +339,7 @@ export default function HomeScreen() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('monthly_count, is_premium, subscription_start_date')
+      .select('monthly_count, is_premium, subscription_start_date, extra_stories')
       .eq('id', user.id)
       .single();
 
@@ -363,17 +363,29 @@ export default function HomeScreen() {
       profile.monthly_count = 0;
     }
 
-    if (!profile?.is_premium && (profile?.monthly_count || 0) >= 5) {
+    const limit = profile?.is_premium ? 30 : 5;
+    const extraStories = profile?.extra_stories || 0;
+    const monthlyUsed = profile?.monthly_count || 0;
+
+    if (monthlyUsed >= limit && extraStories === 0) {
+      const message = profile?.is_premium
+        ? 'Bu ay 30 premium masalını kullandın. Ekstra masal hakkı satın alabilirsin.'
+        : 'Bu ay 5 ücretsiz masalını kullandın. Ekstra masal hakkı satın alabilir veya premium\'a geçebilirsin.';
+      
       Alert.alert(
-        'Bu ayki masalların bitti 🌙',
-        'Bu ay 10 ücretsiz masalını kullandın. Sınırsız masal için premium üyeliğe geç.',
+        'Aylık limitin doldu 🌙',
+        message,
         [
-          { text: 'Belki sonra', style: 'cancel' },
-          { 
-            text: '✨ Premium Al', 
-            onPress: () => Alert.alert('Yakında!', 'Premium üyelik çok yakında geliyor.') 
+          { text: 'Kapat', style: 'cancel' },
+          {
+            text: '📚 Ekstra Hak Al',
+            onPress: () => navigation.navigate('ExtraStories'),
           },
-        ]
+          !profile?.is_premium && {
+            text: '✨ Premium\'a Yükselt',
+            onPress: () => navigation.navigate('Premium'),
+          },
+        ].filter(Boolean)
       );
       setIsLoading(false);
       return;
@@ -521,10 +533,17 @@ GENEL KURALLAR:
         storyId: insertedStory?.id 
       });
 
-      await supabase
-        .from('profiles')
-        .update({ monthly_count: (profile?.monthly_count || 0) + 1 })
-        .eq('id', user.id);
+      if (monthlyUsed < limit) {
+        await supabase
+          .from('profiles')
+          .update({ monthly_count: monthlyUsed + 1 })
+          .eq('id', user.id);
+      } else {
+        await supabase
+          .from('profiles')
+          .update({ extra_stories: extraStories - 1 })
+          .eq('id', user.id);
+      }
 
     } catch (error) {
       console.log('Masal hatası:', error.message, error);
