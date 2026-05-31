@@ -815,7 +815,7 @@ GENEL KURALLAR:
           <View style={s.row}>
             {['kisa', 'orta', 'uzun'].map((len) => {
               const labels = { kisa: 'Kısa', orta: 'Orta', uzun: 'Uzun' };
-              const times = { kisa: '~3 dk', orta: '~7 dk', uzun: '~12 dk' };
+              const times = { kisa: '4-5 dk', orta: '8-9 dk', uzun: '12-13 dk' };
               const isLocked = !isPremium && len !== 'kisa';
 
               return (

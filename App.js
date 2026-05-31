@@ -7,10 +7,12 @@ import StoryScreen from './screens/StoryScreen';
 import AuthScreen from './screens/AuthScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import SplashScreen from './screens/SplashScreen';
 
 const Stack = createStackNavigator();
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -24,6 +26,10 @@ export default function App() {
       setSession(session);
     });
   }, []);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   if (isLoading) return null;
 
