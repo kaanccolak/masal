@@ -22,7 +22,7 @@ const COLORS = {
 export default function StoryScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { story, storyId } = route.params;
+  const { story, storyId, themes, age_group } = route.params;
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentStoryId, setCurrentStoryId] = useState(storyId);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -236,6 +236,24 @@ export default function StoryScreen() {
         }}>
           {title}
         </Text>
+
+        {(age_group || (themes && themes.length > 0)) && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            {age_group && (
+              <View style={{ backgroundColor: '#1E2433', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Text style={{ color: '#8892A4', fontSize: 12 }}>{age_group} Yaş</Text>
+              </View>
+            )}
+            {themes?.map((theme, i) => {
+              const cleanTheme = theme.includes(':') ? theme.split(':')[1] : theme;
+              return (
+                <View key={i} style={{ backgroundColor: '#1E2433', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: '#8892A4', fontSize: 12 }}>{cleanTheme}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Oynat/Durdur butonu */}
         <TouchableOpacity

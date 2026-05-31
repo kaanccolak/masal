@@ -21,6 +21,14 @@ export default function FavoritesScreen() {
   const navigation = useNavigation();
   const [stories, setStories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedCards, setExpandedCards] = useState({});
+
+  const toggleExpand = (storyId) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [storyId]: !prev[storyId]
+    }));
+  };
 
   useEffect(() => {
     loadFavorites();
@@ -61,6 +69,8 @@ export default function FavoritesScreen() {
       storyRaw: story.content,
       selectedVoice: story.voice || 'female',
       storyId: story.id,
+      themes: story.themes || [],
+      age_group: story.age_group || '',
     });
   };
 
@@ -127,26 +137,44 @@ export default function FavoritesScreen() {
                     {story.title}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                    {story.age_group && (
-                      <View style={{
-                        backgroundColor: '#1E2433',
-                        borderRadius: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                      }}>
-                        <Text style={{ color: COLORS.muted, fontSize: 12 }}>{story.age_group}</Text>
-                      </View>
-                    )}
-                    {story.themes?.slice(0, 2).map((theme, i) => (
-                      <View key={i} style={{
-                        backgroundColor: '#1E2433',
-                        borderRadius: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                      }}>
-                        <Text style={{ color: COLORS.muted, fontSize: 12 }}>{theme}</Text>
-                      </View>
-                    ))}
+                    {(() => {
+                      const themes = story.themes || [];
+                      const cleanThemes = themes.map(t => t.includes(':') ? t.split(':')[1] : t);
+                      const isExpanded = expandedCards[story.id];
+                      const visibleThemes = isExpanded ? cleanThemes : cleanThemes.slice(0, 3);
+                      const hiddenCount = cleanThemes.length - 3;
+
+                      return (
+                        <>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                            {story.age_group && (
+                              <View style={{ backgroundColor: '#1E2433', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                <Text style={{ color: COLORS.muted, fontSize: 12 }}>{story.age_group} Yaş</Text>
+                              </View>
+                            )}
+                            {visibleThemes.map((theme, i) => (
+                              <View key={i} style={{ backgroundColor: '#1E2433', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                <Text style={{ color: COLORS.muted, fontSize: 12 }}>{theme}</Text>
+                              </View>
+                            ))}
+                            {!isExpanded && hiddenCount > 0 && (
+                              <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); toggleExpand(story.id); }}
+                                style={{ backgroundColor: '#2D2654', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                <Text style={{ color: '#7C6AF7', fontSize: 12 }}>+{hiddenCount} daha</Text>
+                              </TouchableOpacity>
+                            )}
+                            {isExpanded && (
+                              <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); toggleExpand(story.id); }}
+                                style={{ backgroundColor: '#2D2654', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                <Text style={{ color: '#7C6AF7', fontSize: 12 }}>Gizle</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </>
+                      );
+                    })()}
                   </View>
                   <Text style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>
                     {new Date(story.created_at).toLocaleDateString('tr-TR')}

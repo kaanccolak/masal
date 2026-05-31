@@ -530,7 +530,9 @@ GENEL KURALLAR:
         story: storyForDisplay,
         storyRaw: cleanStory,
         selectedVoice,
-        storyId: insertedStory?.id 
+        storyId: insertedStory?.id,
+        themes: selectedSubItems,
+        age_group: selectedAge,
       });
 
       if (monthlyUsed < limit) {
