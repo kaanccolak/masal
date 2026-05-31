@@ -611,7 +611,7 @@ GENEL KURALLAR:
             <Text style={{ color: '#8892A4', fontSize: 14, marginTop: 4 }}>Her gece yeni bir macera ✨</Text>
           </View>
           <TouchableOpacity
-            onPress={handleSignOut}
+            onPress={() => navigation.navigate('Profile')}
             style={{
               width: 40,
               height: 40,
@@ -622,7 +622,7 @@ GENEL KURALLAR:
               borderWidth: 1,
               borderColor: '#2D3748',
             }}>
-            <Text style={{ color: '#8892A4', fontSize: 13, fontWeight: 'bold' }}>Çıkış</Text>
+            <Text style={{ color: '#8892A4', fontSize: 18 }}>👤</Text>
           </TouchableOpacity>
         </View>
 
