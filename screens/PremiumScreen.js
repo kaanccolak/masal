@@ -111,7 +111,7 @@ export default function PremiumScreen() {
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-          <View>
+          <View style={{ flex: 1, marginRight: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: 'bold' }}>Yıllık Plan</Text>
               <View style={{
@@ -125,10 +125,9 @@ export default function PremiumScreen() {
             </View>
             <Text style={{ color: COLORS.muted, fontSize: 13 }}>Tek seferlik yıllık ödeme, 12 ay kesintisiz kullanım</Text>
           </View>
-          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
-            <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>1.099 TL</Text>
-            <Text style={{ color: COLORS.muted, fontSize: 12 }}>/ yıl</Text>
-          </View>
+          <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: 'bold', textAlign: 'right' }}>
+            1.099 TL{'\n'}/ yıl
+          </Text>
         </TouchableOpacity>
 
         {/* Aylık plan */}
@@ -145,14 +144,13 @@ export default function PremiumScreen() {
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
-          <View>
+          <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>Aylık Plan</Text>
             <Text style={{ color: COLORS.muted, fontSize: 13 }}>Her ay yenilenir</Text>
           </View>
-          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
-            <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>149 TL</Text>
-            <Text style={{ color: COLORS.muted, fontSize: 12 }}>/ ay</Text>
-          </View>
+          <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: 'bold', textAlign: 'right' }}>
+            149 TL{'\n'}/ ay
+          </Text>
         </TouchableOpacity>
 
         {/* Satın al butonu */}
