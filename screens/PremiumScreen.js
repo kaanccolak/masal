@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  SafeAreaView, StatusBar, Alert
+  StatusBar, Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 const COLORS = {
@@ -124,8 +125,8 @@ export default function PremiumScreen() {
             </View>
             <Text style={{ color: COLORS.muted, fontSize: 13 }}>Tek seferlik yıllık ödeme, 12 ay kesintisiz kullanım</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: COLORS.white, fontSize: 20, fontWeight: 'bold' }}>1.099 TL</Text>
+          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+            <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>1.099 TL</Text>
             <Text style={{ color: COLORS.muted, fontSize: 12 }}>/ yıl</Text>
           </View>
         </TouchableOpacity>
@@ -148,8 +149,8 @@ export default function PremiumScreen() {
             <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>Aylık Plan</Text>
             <Text style={{ color: COLORS.muted, fontSize: 13 }}>Her ay yenilenir</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: COLORS.white, fontSize: 20, fontWeight: 'bold' }}>149 TL</Text>
+          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+            <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: 'bold', textAlign: 'right' }}>149 TL</Text>
             <Text style={{ color: COLORS.muted, fontSize: 12 }}>/ ay</Text>
           </View>
         </TouchableOpacity>

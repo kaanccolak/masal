@@ -849,7 +849,7 @@ GENEL KURALLAR:
                         'Orta ve uzun masallar sadece premium üyelere özel. Premium\'a geç ve sınırsız masal keyfini çıkar!',
                         [
                           { text: 'Belki sonra', style: 'cancel' },
-                          { text: 'Premium Al', onPress: () => Alert.alert('Yakında!', 'Premium üyelik çok yakında geliyor.') }
+                          { text: '✨ Premium\'a Yükselt', onPress: () => navigation.navigate('Premium') }
                         ]
                       );
                       return;
