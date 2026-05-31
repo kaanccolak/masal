@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LottieView from 'lottie-react-native';
 import {
-  SafeAreaView,
   ScrollView,
   View,
   Text,
@@ -15,6 +14,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
@@ -136,7 +136,7 @@ export default function HomeScreen() {
   const [selectedSubItems, setSelectedSubItems] = useState([]);
 
   // Masal uzunluğu
-  const [selectedLength, setSelectedLength] = useState('orta');
+  const [selectedLength, setSelectedLength] = useState('kisa');
 
   // Kişiler
   const [includeChild,  setIncludeChild]  = useState(false);
@@ -279,6 +279,11 @@ export default function HomeScreen() {
 
   // Örnek ses dinleme
   const playVoiceSample = async (voice) => {
+    const VOICES = {
+      female: 'Sulafat',
+      male: 'Enceladus',
+    };
+
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
@@ -286,8 +291,8 @@ export default function HomeScreen() {
       });
 
       const sampleFile = voice === 'female'
-        ? require('../assets/kore.wav')
-        : require('../assets/fenrir.wav');
+        ? require('../assets/sulafat.wav')
+        : require('../assets/enceladus.wav');
 
       const { sound } = await Audio.Sound.createAsync(
         sampleFile,
@@ -358,7 +363,7 @@ export default function HomeScreen() {
       profile.monthly_count = 0;
     }
 
-    if (!profile?.is_premium && (profile?.monthly_count || 0) >= 10) {
+    if (!profile?.is_premium && (profile?.monthly_count || 0) >= 5) {
       Alert.alert(
         'Bu ayki masalların bitti 🌙',
         'Bu ay 10 ücretsiz masalını kullandın. Sınırsız masal için premium üyeliğe geç.',
@@ -378,8 +383,8 @@ export default function HomeScreen() {
     const themes = selectedSubItems.map(item => item.split(':')[1]).join(', ');
 
     // selectedLength key'i: 'kisa' | 'orta' | 'uzun'
-    const lengthMap = { kisa: '150-200', orta: '350-400', uzun: '600-700' };
-    const wordCount = lengthMap[selectedLength] || '350-400';
+    const lengthMap = { kisa: '350-400', orta: '550-600', uzun: '700-800' };
+    const wordCount = lengthMap[selectedLength] || '550-600';
 
     let characterInfo = '';
     if (includeChild  && childName)   characterInfo += `Çocuğun adı: ${childName}. `;
@@ -417,36 +422,44 @@ Kurallar:
 Görevin akıcı, sıcak ve sürükleyici bir uyku masalı yazmak.
 
 ÖNEMLI: Masalın büyük çoğunluğu normal, sıcak bir sesle okunmalıdır.
-Etiketler çok nadir kullanılmalıdır.
+Etiketler çok nadir ve çok stratejik kullanılmalıdır.
 
-İzin verilen etiketler — tüm masalda TOPLAM en fazla 3 etiket:
+Kullanabileceğin etiketler — tüm masalda TOPLAM en fazla 3 etiket:
 
-[sigh] → Karakter derin bir nefes verdiğinde. Tüm masalda en fazla 1 kez.
-[laughing] → Gerçekten komik bir anda. Tüm masalda en fazla 1 kez.
-[whispering] → SADECE tek bir cümle için, gerçek bir sır anında. Tüm masalda en fazla 1 kez. Bir cümleden uzun ASLA kullanma.
-[short pause] → Dramatik bir an öncesinde. Tüm masalda en fazla 2 kez.
+[sigh] → Sadece karakter gerçekten rahatladığında. Tüm masalda en fazla 1 kez. Sadece o kelime için geçerlidir, devamı normal sesle devam eder.
 
-YASAK:
+[laughing] → Sadece gerçekten komik bir anda. Tüm masalda en fazla 1 kez. Sadece o kelime için geçerlidir, devamı normal sesle devam eder.
+
+[whispering] → SADECE tek bir kısa diyalog cümlesi için. O cümle bitmeden önce mutlaka biter, bir sonraki cümle kesinlikle normal sesle devam eder. Tüm masalda en fazla 1 kez kullan. Anlatıcı sesi ASLA fısıltıya geçmez, sadece bir karakterin tek cümlesi fısıltıyla söylenir.
+
+[short pause] → Dramatik bir an öncesinde kısa duraklama. Tüm masalda en fazla 2 kez.
+
+YANLIŞ KULLANIM ÖRNEKLERİ — bunları ASLA yapma:
+❌ [whispering] Orman sessizdi. Minik sincap yürüdü. Ağaçlar sallandı.
+❌ [whispering] uzun bir paragraf yazma
+❌ Art arda iki etiket kullanma
+
+DOĞRU KULLANIM ÖRNEKLERİ:
+✅ [whispering] "Bunu kimseye söyleme." Sonra normal sesle devam etti.
+✅ Pamuk [sigh] derin bir nefes aldı ve uyudu.
+✅ [short pause] Kapı yavaşça açıldı.
+
+KESINLIKLE YASAK:
 - [shouting] kullanma
-- [uhm] kullanma  
-- Art arda 2 etiket kullanma
-- Anlatıcı sesini [whispering] yapma — SADECE karakter diyalogunda 1 cümle
-- [whispering] ile başlayan paragraf yazma
-
-ÖRNEK DOĞRU KULLANIM:
-"Orman sessizdi. Minik sincap kulağını dayadı. [whispering] 'Bunu kimseye söyleme,' dedi."
-
-ÖRNEK YANLIŞ KULLANIM:
-"[whispering] Orman sessizdi. Minik sincap yavaşça yürüdü. Ağaçlar ona baktı..."
+- [uhm] kullanma
+- Anlatıcı sesini [whispering] yapma
+- [whispering] ile paragraf başlatma
+- Bir etiketin etkisinin birden fazla cümleye yayılması
 
 GENEL KURALLAR:
 - Normal anlatıcı sesi sıcak, sakin ve akıcı olsun
 - Basit akıcı Türkçe, yaşa uygun
 - Değeri ASLA doğrudan söyleme, karakterin eylemiyle göster
-- Markdown formatı kullanma
+- Markdown formatı kullanma, # işareti koyma
 - Emoji veya açıklama ekleme, sadece hikaye
 - Hikaye uykuya doğal geçişle bitsin
-- Son cümle çocuğa iyi geceler hissi versin`,
+- Son cümle çocuğa iyi geceler hissi versin
+- Özel isimlere Türkçe ek getirilirken kesme işareti kullan. Örnek: "Kaan'ın", "Pamuk'un", "Ayşe'ye" — asla "Kaanın", "Pamuğun", "Ayşeye" yazma.`,
           messages: [{ 
             role: 'user', 
             content: prompt 
@@ -800,20 +813,45 @@ GENEL KURALLAR:
           {/* ── D) MASAL UZUNLUĞU ───────────────────────────────────────── */}
           <Text style={s.sectionTitle}>Masal Uzunluğu</Text>
           <View style={s.row}>
-            {LENGTH_OPTIONS.map(opt => {
-              const active = selectedLength === opt.key;
+            {['kisa', 'orta', 'uzun'].map((len) => {
+              const labels = { kisa: 'Kısa', orta: 'Orta', uzun: 'Uzun' };
+              const times = { kisa: '~3 dk', orta: '~7 dk', uzun: '~12 dk' };
+              const isLocked = !isPremium && len !== 'kisa';
+
               return (
                 <TouchableOpacity
-                  key={opt.key}
-                  style={[s.optChip, active && s.optChipActive]}
-                  onPress={() => setSelectedLength(opt.key)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.optChipText, active && s.optChipTextActive]}>
-                    {opt.label}
+                  key={len}
+                  onPress={() => {
+                    if (isLocked) {
+                      Alert.alert(
+                        '✨ Premium Özellik',
+                        'Orta ve uzun masallar sadece premium üyelere özel. Premium\'a geç ve sınırsız masal keyfini çıkar!',
+                        [
+                          { text: 'Belki sonra', style: 'cancel' },
+                          { text: 'Premium Al', onPress: () => Alert.alert('Yakında!', 'Premium üyelik çok yakında geliyor.') }
+                        ]
+                      );
+                      return;
+                    }
+                    setSelectedLength(len);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: selectedLength === len ? '#7C6AF7' : '#1E2433',
+                    borderRadius: 10,
+                    padding: 10,
+                    alignItems: 'center',
+                    opacity: isLocked ? 0.5 : 1,
+                  }}>
+                  <Text style={{
+                    color: selectedLength === len ? '#FFFFFF' : '#8892A4',
+                    fontSize: 14,
+                    fontWeight: 'bold'
+                  }}>
+                    {labels[len]} {isLocked ? '🔒' : ''}
                   </Text>
-                  <Text style={[s.optChipSub, active && s.optChipTextActive]}>
-                    {opt.sub}
+                  <Text style={{ color: '#8892A4', fontSize: 11, marginTop: 2 }}>
+                    {times[len]}
                   </Text>
                 </TouchableOpacity>
               );

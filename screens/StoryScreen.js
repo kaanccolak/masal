@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  SafeAreaView, StatusBar, Share, Alert
+  StatusBar, Share, Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -73,7 +74,9 @@ export default function StoryScreen() {
         staysActiveInBackground: false,
       });
 
-      const storyText = route.params.storyRaw || story;
+      const fullText = route.params.storyRaw || story;
+      const storyLines = fullText.trim().split(/\n+/);
+      const storyText = storyLines.slice(1).join('\n\n');
       const localPath = `${FileSystem.documentDirectory}${currentStoryId}_${selectedVoice}.wav`;
       const fileInfo = await FileSystem.getInfoAsync(localPath);
 
@@ -91,6 +94,10 @@ export default function StoryScreen() {
         return;
       }
 
+      const voiceConfig = selectedVoice === 'female'
+        ? { voiceName: 'Sulafat' }
+        : { voiceName: 'Enceladus' };
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -102,7 +109,7 @@ export default function StoryScreen() {
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: VOICES[selectedVoice] }
+                  prebuiltVoiceConfig: voiceConfig
                 }
               }
             }
