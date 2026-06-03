@@ -154,6 +154,7 @@ export default function HomeScreen() {
   // Freemium
   const [monthlyCount, setMonthlyCount] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [previewSound, setPreviewSound] = useState(null);
 
   // Animasyon değerleri
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -279,12 +280,14 @@ export default function HomeScreen() {
 
   // Örnek ses dinleme
   const playVoiceSample = async (voice) => {
-    const VOICES = {
-      female: 'Sulafat',
-      male: 'Enceladus',
-    };
-
     try {
+      // Önceki sesi durdur
+      if (previewSound) {
+        await previewSound.stopAsync();
+        await previewSound.unloadAsync();
+        setPreviewSound(null);
+      }
+
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
@@ -299,8 +302,13 @@ export default function HomeScreen() {
         { shouldPlay: true }
       );
 
+      setPreviewSound(sound);
+
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) sound.unloadAsync();
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+          setPreviewSound(null);
+        }
       });
 
     } catch (error) {

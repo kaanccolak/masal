@@ -56,8 +56,18 @@ export default function AuthScreen() {
           return;
         }
 
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+
+        if (signUpData?.user?.identities?.length === 0) {
+          Alert.alert(
+            'Hesap Mevcut',
+            'Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.',
+            [{ text: 'Tamam', onPress: () => setIsLogin(true) }]
+          );
+          setIsLoading(false);
+          return;
+        }
 
         await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -85,7 +95,11 @@ export default function AuthScreen() {
           }
         }
 
-        Alert.alert('Başarılı!', 'Hesabın oluşturuldu. Giriş yapabilirsin.');
+        Alert.alert(
+          'Hesabın Oluşturuldu! 🌙',
+          'E-posta adresine bir doğrulama bağlantısı gönderdik. Lütfen e-postanı kontrol et ve hesabını doğrula, ardından giriş yap.',
+          [{ text: 'Tamam', style: 'default' }]
+        );
         setIsLogin(true);
         setIsLoading(false);
         return;

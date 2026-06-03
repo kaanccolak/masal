@@ -34,7 +34,10 @@ export default function App() {
 
   useEffect(() => {
     const checkOnboarding = async () => {
-      setShowOnboarding(true);
+      const done = await AsyncStorage.getItem('onboarding_done');
+      if (!done) {
+        setShowOnboarding(true);
+      }
     };
     checkOnboarding();
   }, []);
