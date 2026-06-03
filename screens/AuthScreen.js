@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import * as Device from 'expo-device';
+import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const COLORS = {
   bg: '#0A0E1A',
@@ -24,6 +25,9 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -36,10 +40,21 @@ export default function AuthScreen() {
     }
 
     setIsLoading(true);
+    if (!isLogin && password !== confirmPassword) {
+      Alert.alert('Hata', 'Şifreler eşleşmiyor. Lütfen tekrar deneyin.');
+      setIsLoading(false);
+      return;
+    }
     try {
       if (!isLogin) {
-        const deviceId = Device.modelId || Device.osInternalBuildId || 'unknown';
+        // 1. Device ID al
+        let deviceId = await AsyncStorage.getItem('device_unique_id');
+        if (!deviceId) {
+          deviceId = Crypto.randomUUID();
+          await AsyncStorage.setItem('device_unique_id', deviceId);
+        }
 
+        // 2. Device ID kontrolü
         const { data: existingDevice } = await supabase
           .from('profiles')
           .select('id')
@@ -56,7 +71,10 @@ export default function AuthScreen() {
           return;
         }
 
+        // 3. Kayıt ol
+        console.log('Kayıt deneniyor:', email);
         const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
+        console.log('SignUp sonucu:', signUpData, error);
         if (error) throw error;
 
         if (signUpData?.user?.identities?.length === 0) {
@@ -69,30 +87,17 @@ export default function AuthScreen() {
           return;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
+        // 4. Device ID kaydet
+        await new Promise(resolve => setTimeout(resolve, 1500));
         const { data: { user: newUser } } = await supabase.auth.getUser();
-
         if (newUser) {
-          const { error: upsertError } = await supabase
+          await supabase
             .from('profiles')
             .upsert({ 
               id: newUser.id, 
               email: newUser.email,
               device_id: deviceId 
             });
-
-          if (upsertError && upsertError.code === '23505') {
-            await supabase.auth.admin.deleteUser(newUser.id);
-            await supabase.auth.signOut();
-            Alert.alert(
-              'Hesap Mevcut',
-              'Bu cihazdan zaten bir hesap oluşturulmuş. Lütfen mevcut hesabınızla giriş yapın.',
-              [{ text: 'Tamam', onPress: () => setIsLogin(true) }]
-            );
-            setIsLoading(false);
-            return;
-          }
         }
 
         Alert.alert(
@@ -154,7 +159,7 @@ export default function AuthScreen() {
             marginBottom: 24,
           }}>
             <TouchableOpacity
-              onPress={() => setIsLogin(true)}
+              onPress={() => { setIsLogin(true); setConfirmPassword(''); }}
               style={{
                 flex: 1,
                 padding: 12,
@@ -165,7 +170,7 @@ export default function AuthScreen() {
               <Text style={{ color: COLORS.white, fontWeight: 'bold' }}>Giriş Yap</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setIsLogin(false)}
+              onPress={() => { setIsLogin(false); setConfirmPassword(''); }}
               style={{
                 flex: 1,
                 padding: 12,
@@ -196,22 +201,72 @@ export default function AuthScreen() {
                 fontSize: 15,
               }}
             />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Şifren"
-              placeholderTextColor={COLORS.muted}
-              secureTextEntry
-              style={{
-                backgroundColor: COLORS.input,
-                borderWidth: 1,
-                borderColor: COLORS.cardBorder,
-                borderRadius: 12,
-                padding: 14,
-                color: COLORS.white,
-                fontSize: 15,
-              }}
-            />
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Şifren"
+                placeholderTextColor={COLORS.muted}
+                secureTextEntry={!showPassword}
+                style={{
+                  backgroundColor: COLORS.input,
+                  borderWidth: 1,
+                  borderColor: COLORS.cardBorder,
+                  borderRadius: 12,
+                  padding: 14,
+                  paddingRight: 48,
+                  color: COLORS.white,
+                  fontSize: 15,
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  top: 0, 
+                  bottom: 0, 
+                  width: 56,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Text style={{ fontSize: 22, color: '#8892A4' }}>{showPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+            {!isLogin && (
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Şifre tekrarı"
+                  placeholderTextColor={COLORS.muted}
+                  secureTextEntry={!showConfirmPassword}
+                  style={{
+                    backgroundColor: COLORS.input,
+                    borderWidth: 1,
+                    borderColor: COLORS.cardBorder,
+                    borderRadius: 12,
+                    padding: 14,
+                    paddingRight: 48,
+                    color: COLORS.white,
+                    fontSize: 15,
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{ 
+                    position: 'absolute', 
+                    right: 0, 
+                    top: 0, 
+                    bottom: 0, 
+                    width: 56,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  <Text style={{ fontSize: 22, color: '#8892A4' }}>{showConfirmPassword ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* Buton */}

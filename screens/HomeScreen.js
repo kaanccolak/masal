@@ -19,8 +19,6 @@ import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { supabase } from '../lib/supabase';
-import * as Device from 'expo-device';
-
 // API anahtarı: önce app.json extra'ya, yoksa .env'e düşer
 const ANTHROPIC_API_KEY =
   Constants.expoConfig?.extra?.anthropicApiKey ||

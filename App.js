@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { createStackNavigator } from '@react-navigation/stack';
 import { supabase } from './lib/supabase';
 import HomeScreen from './screens/HomeScreen';
@@ -30,6 +32,28 @@ export default function App() {
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+  }, []);
+
+  useEffect(() => {
+    const handleDeepLink = async (url) => {
+      if (url && url.includes('type=signup')) {
+        Alert.alert(
+          'Hesabınız Doğrulandı! 🎉',
+          'E-posta adresiniz başarıyla doğrulandı. Şimdi giriş yapabilirsiniz.',
+          [{ text: 'Tamam' }]
+        );
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
