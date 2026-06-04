@@ -35,7 +35,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleDeepLink = async (url) => {
+    const handleDeepLink = (url) => {
       if (url && url.includes('type=signup')) {
         Alert.alert(
           'Hesabınız Doğrulandı! 🎉',
