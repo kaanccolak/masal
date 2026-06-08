@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.benimmasalim.app",
-      "versionCode": 3,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/benimmasalim_logo.png",
         "backgroundColor": "#0A0E1A"

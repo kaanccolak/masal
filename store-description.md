@@ -27,7 +27,7 @@ Cesaret, arkadaşlık, empati, dürüstlük gibi değerler masalın içine doğa
 Beğendiğiniz masalları favorilerinize ekleyin. Kaydedilen masalları istediğiniz zaman tekrar okuyun veya sesli dinleyin.
 
 - Farklı Uzunluk Seçenekleri
-Kısa (3 dk), orta (7 dk) veya uzun (12 dk) masallar arasından seçin.
+Kısa (4-5 dk), orta (8-9 dk) veya uzun (12-13 dk) masallar arasından seçin.
 
 - Kadın ve Erkek Sesi
 İki farklı anlatıcı sesi arasından tercihinizi yapın.

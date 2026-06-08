@@ -112,6 +112,29 @@ export default function AuthScreen() {
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
+      // Giriş başarılı — device_id kaydet
+      let deviceId = await AsyncStorage.getItem('device_unique_id');
+      if (!deviceId) {
+        deviceId = Crypto.randomUUID();
+        await AsyncStorage.setItem('device_unique_id', deviceId);
+      }
+
+      const { data: { user: loggedUser } } = await supabase.auth.getUser();
+      if (loggedUser) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('device_id')
+          .eq('id', loggedUser.id)
+          .single();
+
+        if (!existingProfile?.device_id) {
+          await supabase
+            .from('profiles')
+            .update({ device_id: deviceId })
+            .eq('id', loggedUser.id);
+        }
+      }
     } catch (error) {
       let errorMessage = 'Bir hata oluştu. Lütfen tekrar dene.';
 
