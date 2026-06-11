@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StatusBar, Alert
+  StatusBar, Alert, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -172,6 +172,20 @@ export default function PremiumScreen() {
         <Text style={{ color: COLORS.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
           İstediğin zaman aboneliğini iptal edebilirsin.
         </Text>
+
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://kaanccolak.github.io/masal/privacy-policy.html')}>
+          <Text style={{ color: '#7C6AF7', fontSize: 12, textAlign: 'center', marginTop: 8 }}>
+            Gizlilik Politikası
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+          <Text style={{ color: '#7C6AF7', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+            Kullanım Koşulları (EULA)
+          </Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>
