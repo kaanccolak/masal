@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Purchases from 'react-native-purchases';
+import { supabase } from '../lib/supabase';
 
 const COLORS = {
   bg: '#0A0E1A',
@@ -46,13 +48,61 @@ const packages = [
 export default function ExtraStoriesScreen() {
   const navigation = useNavigation();
   const [selectedPackage, setSelectedPackage] = useState('10');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handlePurchase = () => {
-    Alert.alert(
-      'Çok Yakında! 🌙',
-      'Ekstra masal paketi satın alma özelliği çok yakında aktif olacak.',
-      [{ text: 'Tamam', style: 'cancel' }]
-    );
+  const handlePurchase = async () => {
+    try {
+      setIsLoading(true);
+      const offerings = await Purchases.getOfferings();
+
+      if (!offerings.current) {
+        Alert.alert('Hata', 'Ürünler yüklenemedi. Lütfen tekrar deneyin.');
+        return;
+      }
+
+      const packageIdentifiers = {
+        '5': 'stories_5',
+        '10': 'stories_10',
+        '20': 'stories_20',
+      };
+
+      const packageId = packageIdentifiers[selectedPackage];
+      const packageToBuy = offerings.current.availablePackages.find(
+        p => p.identifier === packageId
+      );
+
+      if (!packageToBuy) {
+        Alert.alert('Hata', 'Seçilen paket bulunamadı.');
+        return;
+      }
+
+      await Purchases.purchasePackage(packageToBuy);
+
+      const storiesToAdd = parseInt(selectedPackage);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('extra_stories')
+          .eq('id', user.id)
+          .single();
+
+        await supabase
+          .from('profiles')
+          .update({ extra_stories: (profile?.extra_stories || 0) + storiesToAdd })
+          .eq('id', user.id);
+      }
+
+      Alert.alert('Tebrikler! 🎉', `${storiesToAdd} masal hakkı hesabına eklendi!`);
+      navigation.goBack();
+
+    } catch (error) {
+      if (error.userCancelled) return;
+      Alert.alert('Hata', 'Satın alma işlemi başarısız: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -135,6 +185,7 @@ export default function ExtraStoriesScreen() {
         {/* Satın al butonu */}
         <TouchableOpacity
           onPress={handlePurchase}
+          disabled={isLoading}
           style={{
             backgroundColor: COLORS.accent,
             borderRadius: 16,
@@ -142,6 +193,7 @@ export default function ExtraStoriesScreen() {
             alignItems: 'center',
             marginTop: 8,
             marginBottom: 20,
+            opacity: isLoading ? 0.7 : 1,
           }}>
           <Text style={{ color: COLORS.white, fontSize: 17, fontWeight: 'bold' }}>
             📚 Paketi Satın Al

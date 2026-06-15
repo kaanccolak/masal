@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Purchases from 'react-native-purchases';
+import { supabase } from '../lib/supabase';
 
 const COLORS = {
   bg: '#0A0E1A',
@@ -19,13 +21,46 @@ const COLORS = {
 export default function PremiumScreen() {
   const navigation = useNavigation();
   const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubscribe = () => {
-    Alert.alert(
-      'Çok Yakında! 🌙',
-      'Premium üyelik sistemi çok yakında aktif olacak. Şu an ücretsiz planla devam edebilirsin.',
-      [{ text: 'Tamam', style: 'cancel' }]
-    );
+  const handleSubscribe = async () => {
+    try {
+      setIsLoading(true);
+      const offerings = await Purchases.getOfferings();
+
+      if (!offerings.current) {
+        Alert.alert('Hata', 'Ürünler yüklenemedi. Lütfen tekrar deneyin.');
+        return;
+      }
+
+      const packageToBuy = selectedPlan === 'yearly'
+        ? offerings.current.annual
+        : offerings.current.monthly;
+
+      if (!packageToBuy) {
+        Alert.alert('Hata', 'Seçilen plan bulunamadı.');
+        return;
+      }
+
+      const { customerInfo } = await Purchases.purchasePackage(packageToBuy);
+
+      if (customerInfo.entitlements.active['Benim Masalım Premium']) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({ is_premium: true })
+            .eq('id', user.id);
+        }
+        Alert.alert('Tebrikler! 🎉', 'Premium üyeliğin aktif edildi!');
+        navigation.goBack();
+      }
+    } catch (error) {
+      if (error.userCancelled) return;
+      Alert.alert('Hata', 'Satın alma işlemi başarısız: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const features = [
@@ -156,12 +191,14 @@ export default function PremiumScreen() {
         {/* Satın al butonu */}
         <TouchableOpacity
           onPress={handleSubscribe}
+          disabled={isLoading}
           style={{
             backgroundColor: COLORS.accent,
             borderRadius: 16,
             padding: 18,
             alignItems: 'center',
             marginBottom: 16,
+            opacity: isLoading ? 0.7 : 1,
           }}>
           <Text style={{ color: COLORS.white, fontSize: 17, fontWeight: 'bold' }}>
             {selectedPlan === 'yearly' ? '✨ Yıllık Planı Başlat' : '✨ Aylık Planı Başlat'}

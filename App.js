@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
@@ -22,6 +23,21 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const initRevenueCat = () => {
+      try {
+        Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+        Purchases.configure({
+          apiKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+        });
+        console.log('RevenueCat initialized successfully');
+      } catch (error) {
+        console.log('RevenueCat init error:', error);
+      }
+    };
+    initRevenueCat();
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
